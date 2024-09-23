@@ -1,0 +1,26 @@
+pseudocode for bootloader.asm
+
+1. Set memory origin to 0x7C00 (this is where the BIOS loads the bootloader in memory)
+
+2. Disable interrupts (cli)
+
+3. Clear the AX register (set AX to 0)
+
+4. Set the DS, ES, and SS segment registers to the value in AX (which is 0), initializing the data segment, extra segment, and stack segment to 0.
+
+5. Set the stack pointer (SP) to 0x7C00, preparing to use memory from 0x7C00 onwards as the stack.
+
+6. Load the value from control register CR0 into the EAX register.
+
+7. Set the protected mode bit (bit 0) in EAX by performing a bitwise OR with 1.
+
+8. Write the updated value of EAX (with the protected mode bit set) back to control register CR0, enabling protected mode.
+
+9. Perform a far jump to the memory address 0x1000 with code segment 0x08, transferring control to the kernel loaded at address 0x1000.
+
+10. Switch to 32-bit mode (indicated by [bits 32]) and enter an infinite loop (labelled "hang") where the CPU halts repeatedly (hlt) and jumps back to itself (jmp hang).
+
+11. Pad the rest of the bootloader to 510 bytes with zeros.
+
+12. Write the boot signature 0xAA55 at the end of the 512-byte sector, which tells the BIOS this is a valid bootable disk.
+

@@ -1,31 +1,28 @@
-CXX = i686-elf-g++
-AS = i686-elf-as
-LD = i686-elf-ld
+# Define the assembler and emulator
+ASM = nasm
+EMU = qemu-system-i386
 
-CXXFLAGS = -ffreestanding -O2 -Wall -Wextra -fno-exceptions -fno-rtti
-ASFLAGS = --32
-LDFLAGS = -T linker.ld -nostdlib
+# Output file names
+BOOTLOADER = bootloader.bin
+KERNEL = kernel.bin
+IMAGE = os-image.bin
 
-all: myos.iso
+# Assemble the bootloader
+$(BOOTLOADER): bootloader.asm
+	$(ASM) -f bin bootloader.asm -o $(BOOTLOADER)
 
-boot.o: boot.asm
-	$(AS) $(ASFLAGS) boot.asm -o boot.o
+# Assemble the kernel
+$(KERNEL): kernel.asm
+	$(ASM) -f bin kernel.asm -o $(KERNEL)
 
-kernel.o: kernel.cpp
-	$(CXX) -c kernel.cpp -o kernel.o $(CXXFLAGS)
+# Combine bootloader and kernel into a disk image
+$(IMAGE): $(BOOTLOADER) $(KERNEL)
+	cat $(BOOTLOADER) $(KERNEL) > $(IMAGE)
 
-myos.bin: boot.o kernel.o
-	$(LD) -o myos.bin $(LDFLAGS) boot.o kernel.o
+# Run the OS in QEMU
+run: $(IMAGE)
+	$(EMU) -drive format=raw,file=$(IMAGE),index=0,media=disk
 
-myos.iso: myos.bin
-	mkdir -p isodir/boot/grub
-	cp myos.bin isodir/boot/myos.bin
-	echo 'menuentry "MyOS" { multiboot /boot/myos.bin }' > isodir/boot/grub/grub.cfg
-	grub-mkrescue -o myos.iso isodir
-
-run: myos.iso
-	qemu-system-i386 -cdrom myos.iso
-
+# Clean up generated files
 clean:
-	rm -f *.o myos.bin myos.iso
-	rm -rf isodir
+	rm -f $(BOOTLOADER) $(KERNEL) $(IMAGE)
