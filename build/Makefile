@@ -1,49 +1,49 @@
-# Define the assembler, C compiler, linker, and emulator
-ASM = nasm
-CC = i686-elf-gcc
-LD = i686-elf-ld
-EMU = qemu-system-i386
+BUILD=build/
 
-# Compiler and linker flags
-CFLAGS = -ffreestanding -m32 -g -c
-LDFLAGS = -melf_i386 -Ttext 0x1000 --oformat binary
+KERNEL_SOURCES=$(wildcard kernel/*.c kernel/drivers/*.c)
+OBJ=${KERNEL_SOURCES:.c=.o}
 
-# Output file names
-BOOTLOADER = bootloader.bin
-KERNEL_ASM = kernel_entry.o
-KERNEL_C = kernel.o
-KERNEL = kernel.bin
-IMAGE = os-image.bin
+C_FLAGS=-m32 -ffreestanding -g
+LD_FLAGS=-melf_i386
+NASMFLAGS=-felf32
 
-# Default target
-all: $(IMAGE)
+#C_FLAGS=-ffreestanding -g
+#LD_FLAGS=-melf
+#NASMFLAGS=-felf
 
-# Assemble the bootloader
-$(BOOTLOADER): bootloader.asm
-	$(ASM) -f bin $< -o $@
+QEMU=qemu-system-i386
 
-# Assemble the kernel's assembly entry point
-$(KERNEL_ASM): kernel_entry.asm
-	$(ASM) -f elf $< -o $@
+all: dir kernel.bin boot.bin os-image os
 
-# Compile the kernel's C part
-$(KERNEL_C): kernel.c
-	$(CC) $(CFLAGS) $< -o $@
+run: 
+	$(QEMU) -hda ${BUILD}os.img
 
-# Link the kernel
-$(KERNEL): $(KERNEL_ASM) $(KERNEL_C)
-	$(LD) $(LDFLAGS) $^ -o $@
+debug:
+	$(QEMU) -fda ${BUILD}os.img -gdb tcp::9999 -S
 
-# Combine bootloader and kernel into a disk image
-$(IMAGE): $(BOOTLOADER) $(KERNEL)
-	cat $(BOOTLOADER) $(KERNEL) > $(IMAGE)
+os-image:
+	cat ${BUILD}boot.bin ${BUILD}kernel.bin > ${BUILD}os-image
 
-# Run the OS in QEMU
-run: $(IMAGE)
-	$(EMU) -drive format=raw,file=$(IMAGE),index=0,media=disk
+os: $(BUILD)os-image
+	dd if=/dev/zero bs=1024 count=1440 > ${BUILD}$@.img
+	dd if=$< of=${BUILD}$@.img conv=notrunc
 
-# Clean up generated files
+boot.bin: boot/boot_sect.asm
+	nasm $(NASM_FLAGS) $< -f bin -I 'boot/' -o ${BUILD}$@
+
+%kernel_entry.o: kernel/kernel_entry.asm
+	nasm $< $(NASMFLAGS) -o kernel/kernel_entry.o
+
+kernel.bin: kernel/kernel_entry.o $(OBJ)	
+	ld $(LD_FLAGS) -o ${BUILD}$@ -Ttext 0x1000 $^ --oformat binary
+
+%.o: %.c
+	gcc $(C_FLAGS) -c $< -o $@
+
+dir:
+	mkdir -p $(BUILD)
+
 clean:
-	rm -f $(BOOTLOADER) $(KERNEL_ASM) $(KERNEL_C) $(KERNEL) $(IMAGE)
+	@rm -f kernel/*.o kernel/drivers/*.o
+	@rm -r $(BUILD)
 
-.PHONY: all run clean

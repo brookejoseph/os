@@ -1,10 +1,10 @@
-# Use a basic Linux distribution
-FROM ubuntu:latest
+# Use the amd64 architecture for Ubuntu
+FROM --platform=linux/amd64 ubuntu:latest
 
 # Set environment variables to handle prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install basic tools and dependencies
+# Install basic tools and dependencies, including 32-bit libraries for GCC
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     build-essential \
@@ -21,6 +21,9 @@ RUN apt-get update && apt-get upgrade -y && \
     texinfo \
     libisl-dev \
     ca-certificates \
+    gcc-multilib \
+    g++-multilib \
+    libc6-dev-i386 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
