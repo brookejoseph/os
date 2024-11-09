@@ -23,3 +23,6 @@ disk_error :
     
 ; Variables
 DISK_ERROR_MSG db " Disk read error !", 0
+
+
+
